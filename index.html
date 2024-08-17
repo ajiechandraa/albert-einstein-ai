@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en" class="full-h">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Albert Einstein</title>
+</head>
+
+<body class="full-h">
+    <div class="header">
+		    <div class="lds-ripple"><div></div><div></div></div>
+            <h1>Albert Einstein</h1>
+	</div>
+
+    <main id="chat">
+    </main>
+    <footer>
+        <div class="input-container">
+          <input style="font-size: 16px;" type="text" id="prompt" placeholder="Start a conversation here" autofocus>
+          <button id="sendButton">Send</button>
+        </div>
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // Menyembunyikan .lds-ripple saat dokumen dibuka
+            document.querySelector('.lds-ripple').style.display = 'none';
+
+            const $ = (id) => document.getElementById(id);
+
+            const $div = (cls) => {
+                const el = document.createElement('div');
+                el.setAttribute('class', cls);
+                return el;
+            }
+
+            function message(type, text) {
+                const el = $div(`speech-bubble-${type} color-${type}`);
+                el.innerText = text || '';
+                const wrapper = $div(`speech speech-${type}`);
+                wrapper.appendChild(el);
+                $('chat').appendChild(wrapper);
+                setTimeout(() => {
+                    el.scrollIntoView();
+                }, 0);
+                return el;
+            }
+
+            function stream(type, text) {
+                const selectors = document.querySelectorAll(`.speech-bubble-${type}`);
+                const el = selectors[selectors.length - 1] || message(type, text);
+                el.innerText = text || '';
+                setTimeout(() => {
+                    el.scrollIntoView();
+                }, 0);
+                return el;
+            }
+
+            function unmessage(type) {
+                const el = document.querySelector(`.speech-${type}`);
+                el && el.remove();
+            }
+
+            const isTouchDevice = () => 'ontouchstart' in window;
+
+            function focusInput() {
+                if (!isTouchDevice()) {
+                    $('prompt').focus();
+                }
+            }
+
+            function speak(text) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.1;
+
+                // Menyembunyikan dan menampilkan elemen berdasarkan status text-to-speech
+                utterance.onstart = () => {
+                    document.querySelector('.lds-ripple').style.display = 'block'; // Tampilkan .lds-ripple
+                    document.querySelector('h1').style.display = 'none'; // Sembunyikan h1
+                };
+
+                utterance.onend = () => {
+                    document.querySelector('.lds-ripple').style.display = 'none'; // Sembunyikan .lds-ripple
+                    document.querySelector('h1').style.display = 'block'; // Tampilkan h1
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }
+
+            async function ask(question, handler) {
+                message('human', question);
+                $('prompt').blur();
+                const url = '/chat?' + encodeURIComponent(question);
+                const el = message('loader');
+                el.innerHTML = '<div class="loader"><div></div><div></div><div></div><div></div></div>';
+                setTimeout(get, 100);
+
+                async function get() {
+                    const response = await fetch(url);
+                    message('assistant');
+                    let answer = '';
+                    try {
+                        const reader = response.body.getReader();
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            unmessage('loader');
+                            if (done) {
+                                break;
+                            }
+                            const text = new TextDecoder().decode(value, { stream: true });
+                            answer += text;
+                            stream('assistant', answer);
+                        }
+                    } catch (e) {
+                        message('panic', `Something is wrong: ${e.toString()}`);
+                    } finally {
+                        unmessage('loader');
+                        handler && handler(answer);
+                        speak(answer);
+                        setTimeout(focusInput, 0);
+                    }
+                }
+
+
+            }
+
+            $('prompt').addEventListener('keydown', function handleKeyInput(event) {
+                if (event.key === 'Enter') {
+                    const el = $('prompt');
+                    const question = el.value.trim();
+                    if (question.length > 0) {
+                        ask(question);
+                        el.value = '';
+                    }
+                }
+            });
+
+            function sendMessage() {
+                const el = $('prompt');
+                const question = el.value.trim();
+                if (question.length > 0) {
+                    ask(question);
+                    el.value = '';
+                }
+            }
+
+            $('prompt').addEventListener('keydown', function handleKeyInput(event) {
+                if (event.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            $('sendButton').addEventListener('click', sendMessage);
+
+            setTimeout(() => {
+                message('assistant', 'Hello, ask anything to me!');
+            }, 100);
+
+            const tests = [
+                'Are you generally a shy or outgoing person?',
+                'Do you prefer to plan things or be spontaneous?',
+                'Would you describe yourself as optimistic or pessimistic?',
+                'Are you more of a morning person or a night owl?',
+                'Do you tend to be introverted or extroverted?',
+                'Are you a competitive or laid-back person?',
+                'Do you prefer to work alone or in a group?',
+                'Are you more of a realist or a dreamer?',
+                'Would you say you are patient or impatient?',
+                'Are you a risk-taker or cautious?'
+            ];
+
+            async function verify() {
+                const question = tests.shift();
+                if (question && question.length > 0) {
+                    await ask(question, () => setTimeout(verify, 300));
+                }
+            }
+
+        });
+    </script>
+
+    <style>
+        html {
+            line-height: 1.5;
+            background-color: #0d0d0d; /* Ganti warna latar belakang menjadi gelap */
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .full-h {
+            margin: 0 auto;
+            padding: 0;
+            height: 100%;
+        }
+
+        .header{
+            background-color: #1a1a1a; 
+            color: #00ffcc; 
+            height: 80px;
+            display: block; 
+            margin: 0 auto; 
+            background: transparent; 
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            color: #e0e0e0; /* Ganti warna teks menjadi abu-abu terang */
+            background: linear-gradient(135deg, #1a1a1a, #0d0d0d); /* Ganti warna latar belakang menjadi gelap */
+            font-size:14px;
+            max-width: 550px;
+        }
+
+        *,
+        ::after,
+        ::before {
+            box-sizing: border-box;
+            border-width: 0;
+            border-style: solid;
+            border-color: currentColor;
+        }
+
+        footer {
+            flex: none;
+            padding: 20px;
+            background-color: #1a1a1a; /* Warna latar belakang footer */
+        }
+
+        main#chat {
+            padding: 1rem;
+            overflow-y: scroll;
+            -webkit-overflow-scrolling: touch;
+            flex: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #00ffcc #1a1a1a; /* Ganti warna scrollbar */
+        }
+
+        main#chat::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        main#chat::-webkit-scrollbar-track {
+            background: #1a1a1a; /* Ganti warna latar belakang scrollbar */
+        }
+
+        main#chat::-webkit-scrollbar-thumb {
+            background-color: #00ffcc; /* Ganti warna thumb scrollbar */
+            border-radius: 10px;
+        }
+
+        .input-container {
+            outline: 1px solid #3d3d3d; /* Sebelum klik */
+            background-color: #1a1a1a; /* Ganti warna latar belakang input container */
+            border-radius: 50px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .input-container:focus-within {
+            outline: 1px solid #00ffcc; /* Setelah klik */
+        }
+
+        input,
+        textarea {
+            font-family: Poppins, sans-serif;
+            margin: 0;
+            color: #e0e0e0; /* Ganti warna teks input */
+            width: 100%;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            background: transparent;
+	    	border: none;
+	    	outline: none;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+        }
+
+        input:disabled,
+        input[disabled] {
+            cursor: not-allowed;
+        }
+        
+        button#sendButton {
+            background-color: #00ffcc; /* Ganti warna tombol menjadi hijau neon */
+            color: #1a1a1e; /* Ganti warna teks tombol */
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            transition: background-color 0.3s;
+        }
+
+        button#sendButton:hover {
+            background-color: #00cc99; /* Ganti warna saat hover */
+        }
+
+        button#sendButton:active {
+            background-color: #00cc99; /* Ganti warna saat hover */
+        }
+
+        .speech {
+            display: grid;
+            column-gap: .75rem;
+            padding-top: .5rem;
+            padding-bottom: .5rem;
+        }
+
+        .speech-loader,
+        .speech-assistant {
+            place-items: start;
+        }
+
+        .speech-human,
+        .speech-panic {
+            place-items: end;
+        }
+
+        .speech-bubble-loader,
+        .speech-bubble-assistant,
+        .speech-bubble-human,
+        .speech-bubble-panic {
+            display: block;
+            white-space: pre-line;
+            position: relative;
+            width: fit-content;
+            padding: .5rem 1rem;
+            min-height: 2.5rem;
+            min-width: 2.5rem;
+            max-width: 90%;
+            border-radius: 0.5rem;
+            border: none;
+        }
+
+        .speech-bubble-assistant {
+            font-size: 16px;
+            border-radius: 20px 20px 20px 0;
+        }
+
+        .speech-bubble-human {
+            font-size: 16px;
+            border-radius: 20px 20px 0 20px;
+            color: #000000; /* Ganti warna teks menjadi hitam */
+        }
+
+        .speech-bubble-panic {
+            border-color: #00ffcc;
+        }
+
+        .color-assistant {
+            background-color: #00ffcc; /* Ganti warna latar belakang asisten */
+            color: #000000; /* Ganti warna teks menjadi hitam */
+        }
+
+        .color-human {
+            background-color: #242424; /* Ganti warna latar belakang manusia */
+            color: #00ffcc; /* Ganti warna teks menjadi hijau neon */
+        }
+
+        .color-panic {
+            background-color: #c2b2a0;
+            color: #3b2a1e;
+        }
+
+        div#input {
+            position: fixed;
+            width: 100%;
+            left: 0;
+            bottom: 2px;
+            padding: 0px;
+        }
+
+        .loader {
+        width: 40px;
+        aspect-ratio: 2;
+        --_g: no-repeat radial-gradient(circle closest-side,#00ffcc 90%,#0000);
+        background: 
+            var(--_g) 0%   50%,
+            var(--_g) 50%  50%,
+            var(--_g) 100% 50%;
+        background-size: calc(100%/3) 50%;
+        animation: l3 1s infinite linear;
+        }
+        @keyframes l3 {
+            20%{background-position:0%   0%, 50%  50%,100%  50%}
+            40%{background-position:0% 100%, 50%   0%,100%  50%}
+            60%{background-position:0%  50%, 50% 100%,100%   0%}
+            80%{background-position:0%  50%, 50%  50%,100% 100%}
+        }
+
+        .lds-ripple,
+        .lds-ripple div {
+        box-sizing: border-box;
+        }
+        .lds-ripple {
+        display: inline-block;
+        position: relative;
+        width: 80px;
+        height: 80px;
+        }
+        .lds-ripple div {
+        position: absolute;
+        border: 4px solid currentColor;
+        opacity: 1;
+        border-radius: 50%;
+        animation: lds-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+        .lds-ripple div:nth-child(2) {
+        animation-delay: -0.5s;
+        }
+        @keyframes lds-ripple {
+        0% {
+            top: 36px;
+            left: 36px;
+            width: 8px;
+            height: 8px;
+            opacity: 0;
+        }
+        4.9% {
+            top: 36px;
+            left: 36px;
+            width: 8px;
+            height: 8px;
+            opacity: 0;
+        }
+        5% {
+            top: 36px;
+            left: 36px;
+            width: 8px;
+            height: 8px;
+            opacity: 1;
+        }
+        100% {
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            opacity: 0;
+        }
+        }
+    </style>
+
+</body>
+
+</html>

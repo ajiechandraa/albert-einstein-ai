@@ -1,0 +1,16 @@
+{
+  "name": "nano-jarvis",
+  "version": "1.0.0",
+  "description": "![Screenshot](nano-jarvis.png)",
+  "main": "nano-jarvis.js",
+  "scripts": {
+    "start": "node --watch nano-jarvis.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
